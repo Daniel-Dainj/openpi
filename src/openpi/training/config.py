@@ -453,10 +453,11 @@ class LeRobotDROIDDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class LeRobotRokaeDataConfig(DataConfigFactory):
     extra_delta_transform: bool = True
-    
+
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
         repack_transform = _transforms.Group(
@@ -481,12 +482,11 @@ class LeRobotRokaeDataConfig(DataConfigFactory):
 
         delta_action_mask = _transforms.make_bool_mask(7, -1)  # 7 joints, gripper absolute
         data_transforms = data_transforms.push(
-        inputs=[_transforms.DeltaActions(delta_action_mask)],
-        outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            inputs=[_transforms.DeltaActions(delta_action_mask)],
+            outputs=[_transforms.AbsoluteActions(delta_action_mask)],
         )
 
         model_transforms = ModelTransformFactory()(model_config)
-
 
         return dataclasses.replace(
             self.create_base_config(assets_dirs, model_config),
@@ -730,80 +730,61 @@ _CONFIGS = [
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
     ),
-
     TrainConfig(
-    name="pi0_rokae_low_mem_finetune",
-    # LoRA fine-tuning: keep exactly consistent with freeze_filter below
-    model=pi0_config.Pi0Config(
-        action_horizon=15,
-        paligemma_variant="gemma_2b_lora",
-        action_expert_variant="gemma_300m_lora",
-    ),
-
-    # Use your own LeRobot dataset + your Rokae transforms
-    data=LeRobotRokaeDataConfig(
-        repo_id="/home/dainanjun/robot/openpi/all_convert/rokae_lora",
-        base_config=DataConfig(
-            prompt_from_task=True,
+        name="pi0_rokae_low_mem_finetune",
+        # LoRA fine-tuning: keep exactly consistent with freeze_filter below
+        model=pi0_config.Pi0Config(
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
         ),
-        extra_delta_transform=True,
+        # Use your own LeRobot dataset + your Rokae transforms
+        data=LeRobotRokaeDataConfig(
+            repo_id="/home/dainanjun/robot/openpi/all_convert/new_rokae_lora",
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+            extra_delta_transform=True,
+        ),
+        # Load pi0 base checkpoint (matches pi0 architecture)
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        num_train_steps=6000,
+        # Freeze everything except LoRA adapters (must match model above)
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA fine-tuning
+        ema_decay=None,
     ),
-
-    # Load pi0 base checkpoint (matches pi0 architecture)
-    weight_loader=weight_loaders.CheckpointWeightLoader(
-        "gs://openpi-assets/checkpoints/pi0_base/params"
-    ),
-
-    num_train_steps=6000,
-
-    # Freeze everything except LoRA adapters (must match model above)
-    freeze_filter=pi0_config.Pi0Config(
-        paligemma_variant="gemma_2b_lora",
-        action_expert_variant="gemma_300m_lora",
-    ).get_freeze_filter(),
-
-    # Turn off EMA for LoRA fine-tuning
-    ema_decay=None,
-    ),
-
-
-
     TrainConfig(
-    name="pi05_rokae_low_mem_finetune",
-    # LoRA fine-tuning: keep exactly consistent with freeze_filter below
-    model=pi0_config.Pi0Config(
-        pi05=True,
-        action_horizon=50,
-        paligemma_variant="gemma_2b_lora",
-        action_expert_variant="gemma_300m_lora",
-    ),
-
-    # Use your own LeRobot dataset + your Rokae transforms
-    data=LeRobotRokaeDataConfig(
-        repo_id="/home/dainanjun/robot/openpi/all_convert/rokae_lora",
-        base_config=DataConfig(
-            prompt_from_task=True,
+        name="pi05_rokae_low_mem_finetune",
+        # LoRA fine-tuning: keep exactly consistent with freeze_filter below
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
         ),
-        extra_delta_transform=True,
+        # Use your own LeRobot dataset + your Rokae transforms
+        data=LeRobotRokaeDataConfig(
+            repo_id="/home/dainanjun/robot/openpi/all_convert/new_rokae_lora",
+            base_config=DataConfig(
+                prompt_from_task=True,
+            ),
+            extra_delta_transform=True,
+        ),
+        # Load pi0 base checkpoint (matches pi0 architecture)
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=6000,
+        # Freeze everything except LoRA adapters (must match model above)
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA fine-tuning
+        ema_decay=None,
     ),
-
-    # Load pi0 base checkpoint (matches pi0 architecture)
-    weight_loader=weight_loaders.CheckpointWeightLoader(
-        "gs://openpi-assets/checkpoints/pi05_base/params"
-    ),
-
-    num_train_steps=6000,
-
-    # Freeze everything except LoRA adapters (must match model above)
-    freeze_filter=pi0_config.Pi0Config(
-        paligemma_variant="gemma_2b_lora",
-        action_expert_variant="gemma_300m_lora",
-    ).get_freeze_filter(),
-
-    # Turn off EMA for LoRA fine-tuning
-    ema_decay=None,
-    ),
-
     TrainConfig(
         name="pi0_fast_libero",
         # Here is an example of loading a pi0-FAST model for full finetuning.

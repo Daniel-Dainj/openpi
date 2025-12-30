@@ -6,9 +6,10 @@ import cv2
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 
 # 设置常量
-REPO_NAME = "rokae_lora"
-DATA_DIR = "/media/dainanjun/T9/new"  # 修改为包含所有小文件夹的大文件夹路径
+REPO_NAME = "new_rokae_lora"
+DATA_DIR = "/home/dainanjun/rokae_ws/src/vla_control/vla_control/new"  # 修改为包含所有小文件夹的大文件夹路径
 OUTPUT_DIR = "/home/dainanjun/robot/openpi/all_convert"  # 这个是输出路径，仍然保留
+
 
 def main():
     # 设置路径
@@ -17,7 +18,7 @@ def main():
 
     # 获取所有子文件夹（每个任务文件夹）
     task_folders = [folder for folder in data_dir.iterdir() if folder.is_dir()]
-    
+
     # 输出路径：output/rokae_xmatepro7
     dataset_root = output_dir / REPO_NAME
     if dataset_root.exists():
@@ -30,7 +31,7 @@ def main():
     dataset = LeRobotDataset.create(
         repo_id=str(dataset_root),  # 直接传本地路径
         robot_type="rokae",
-        fps=15,
+        fps=30,
         features={
             "exterior_image_1_left": {
                 "dtype": "image",
@@ -66,7 +67,7 @@ def main():
     for task_folder in task_folders:
         # 获取该任务文件夹中的所有 .h5 文件
         h5_files = sorted(task_folder.glob("*.h5"))
-        
+
         if len(h5_files) == 0:
             print(f"Warning: No .h5 files found in task folder: {task_folder.name}")
             continue  # 如果该文件夹内没有 .h5 文件，则跳过
@@ -113,6 +114,7 @@ def main():
             print(f"Successfully processed: {h5_path.name} in task: {fixed_task}")
 
     print(f"✅ LeRobot dataset written to: {dataset_root.resolve()}")
+
 
 # 直接调用 main 函数，无需命令行参数
 if __name__ == "__main__":
