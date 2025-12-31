@@ -1,3 +1,142 @@
+# Adapted OpenPi for [SAFE](https://vla-safe.github.io/)
+
+## Setup
+
+```bash
+# Clone this repo
+git clone --recurse-submodules git@github.com:vla-safe/openpi.git
+# Or if you already cloned the repo:
+git submodule update --init --recursive
+
+# Install the base environment
+cd openpi
+GIT_LFS_SKIP_SMUDGE=1 uv sync
+
+# Install the LIBERO environment
+uv venv --python 3.8 examples/libero/.venv
+source examples/libero/.venv/bin/activate
+uv pip sync examples/libero/requirements.txt third_party/libero/requirements.txt --extra-index-url https://download.pytorch.org/whl/cu113 --index-strategy=unsafe-best-match
+uv pip install -e packages/openpi-client
+uv pip install -e third_party/libero
+```
+
+## Generate rollouts on LIBERO benchmark
+
+### Generate rollouts with 1 action sample per step
+
+Run with Pi0-FAST model:
+
+```bash
+# In the first terminal:
+POLICY=pi0fast
+SUITE_NAME=libero_10
+export CUDA_VISIBLE_DEVICES=0
+uv run scripts/serve_policy.py \
+    --env LIBERO \
+    --record \
+    --save_name ${POLICY}-${SUITE_NAME}
+
+# In the second terminal:
+POLICY=pi0fast
+SUITE_NAME=libero_10
+source examples/libero/.venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero
+python examples/libero/main.py \
+    --args.task_suite_name ${SUITE_NAME} \
+    --args.save_name ${POLICY}-${SUITE_NAME}
+```
+
+Run with Pi0 model:
+
+```bash
+# In the first terminal:
+POLICY=pi0
+SUITE_NAME=libero_10
+export CUDA_VISIBLE_DEVICES=0
+uv run scripts/serve_policy.py \
+    --env LIBERO \
+    --record \
+    --save_name ${POLICY}-${SUITE_NAME} \
+    policy:checkpoint \
+    --policy.config pi0_libero \
+    --policy.dir s3://openpi-assets/checkpoints/pi0_libero
+
+# In the second terminal:
+POLICY=pi0
+SUITE_NAME=libero_10
+source examples/libero/.venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero
+python examples/libero/main.py \
+    --args.task_suite_name ${SUITE_NAME} \
+    --args.save_name ${POLICY}-${SUITE_NAME}
+
+```
+
+### Generate rollouts with 10 action samples per step
+
+Note that this is much slower than 1 action sample.
+
+For Pi0-FAST model
+
+```bash
+# In the first terminal:
+POLICY=pi0fast
+SUITE_NAME=libero_10
+TEMP=0.5
+N_SAMPLES=10
+export CUDA_VISIBLE_DEVICES=0
+uv run scripts/serve_policy.py \
+    --env LIBERO \
+    --record \
+    --temperature ${TEMP} \
+    --n_action_samples ${N_SAMPLES} \
+    --save_name ${POLICY}-${SUITE_NAME}-temp${TEMP}-sample${N_SAMPLES}
+
+# In the second terminal:
+POLICY=pi0fast
+SUITE_NAME=libero_10
+TEMP=0.5
+N_SAMPLES=10
+source examples/libero/.venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero
+python examples/libero/main.py \
+    --args.task_suite_name ${SUITE_NAME} \
+    --args.save_name ${POLICY}-${SUITE_NAME}-temp${TEMP}-sample${N_SAMPLES}
+```
+
+For Pi0 model
+
+```bash
+# In the first terminal:
+POLICY=pi0
+SUITE_NAME=libero_10
+TEMP=0.5
+N_SAMPLES=10
+export CUDA_VISIBLE_DEVICES=0
+uv run scripts/serve_policy.py \
+    --env LIBERO \
+    --record \
+    --temperature ${TEMP} \
+    --n_action_samples ${N_SAMPLES} \
+    --save_name ${POLICY}-${SUITE_NAME}-temp${TEMP}-sample${N_SAMPLES} \
+    policy:checkpoint \
+    --policy.config pi0_libero \
+    --policy.dir s3://openpi-assets/checkpoints/pi0_libero
+
+# In the second terminal:
+POLICY=pi0
+SUITE_NAME=libero_10
+TEMP=0.5
+N_SAMPLES=10
+source examples/libero/.venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:$PWD/third_party/libero
+python examples/libero/main.py \
+    --args.task_suite_name ${SUITE_NAME} \
+    --args.save_name ${POLICY}-${SUITE_NAME}-temp${TEMP}-sample${N_SAMPLES}
+```
+
+The following documentation is from the original [openpi](https://github.com/Physical-Intelligence/openpi).
+
 # openpi
 
 openpi holds open-source models and packages for robotics, published by the [Physical Intelligence team](https://www.physicalintelligence.company/).
@@ -16,7 +155,7 @@ This is an experiment: $\pi_0$ was developed for our own robots, which differ fr
 - [Sept 2025] We released PyTorch support in openpi.
 - [Sept 2025] We released pi05, an upgraded version of pi0 with better open-world generalization.
 - [Sept 2025]: We have added an [improved idle filter](examples/droid/README_train.md#data-filtering) for DROID training.
-- [Jun 2025]: We have added [instructions](examples/droid/README_train.md) for using `openpi` to train VLAs on the full [DROID dataset](https://droid-dataset.github.io/). This is an approximate open-source implementation of the training pipeline used to train pi0-FAST-DROID. 
+- [Jun 2025]: We have added [instructions](examples/droid/README_train.md) for using `openpi` to train VLAs on the full [DROID dataset](https://droid-dataset.github.io/). This is an approximate open-source implementation of the training pipeline used to train pi0-FAST-DROID.
 
 
 ## Requirements
